@@ -9,9 +9,9 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from searchbar import SearchBar
-from tray import TrayManager
-from hotkey import HotkeyManager
+from ui.searchbar import SearchBar
+from ui.tray import TrayManager
+from services.hotkey import HotkeyManager
 
 
 def main():
