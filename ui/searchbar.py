@@ -9,6 +9,9 @@ from PyQt5.QtCore import (
     Qt,
     QPoint,
     QStringListModel,
+    QThread,
+    pyqtSignal,
+    QTimer,
 )
 from PyQt5.QtGui import (
     QFont,
@@ -16,6 +19,7 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtWidgets import (
     QWidget,
+    QFrame,
     QLineEdit,
     QLabel,
     QHBoxLayout,
@@ -37,11 +41,11 @@ from config.constants import (
 
 from ui.style import apply_search_style
 
-from services.chrome import open_chrome_search
+from ui.suggestion_popup import SuggestionPopup
 
-from core.history import HistoryManager
+from core.services import ServiceContainer
 
-from core.settings import SettingsManager
+from search.suggestion_worker import SuggestionWorker
 
 
 class SearchBar(QWidget):
@@ -50,17 +54,38 @@ class SearchBar(QWidget):
     """
 
 
-    def __init__(self):
+    requestSuggestions = pyqtSignal(
+        int,
+        str
+    )
+
+
+    def __init__(
+        self,
+        services: ServiceContainer,
+    ):
         super().__init__()
 
-        self.drag_position = None
+        self.setObjectName("SearchBar")
 
-        self.settings = SettingsManager()
-        self.history = HistoryManager()
+        self.drag_position = None
+        self.request_id = 0
+        self.current_keyword = ""
+
+        self.settings = services.settings
+        self.search_service = services.search_service
+        self.autocomplete = services.autocomplete
+        self.logger = services.logger
+
+        self.settings.opacityChanged.connect(
+            self.set_window_opacity
+        )
 
         self.init_window()
         self.init_ui()
         self.init_history()
+        self.init_completion()
+        self.init_suggestion_worker()
         self.apply_shadow()
         self.restore_position()
 
@@ -95,6 +120,8 @@ class SearchBar(QWidget):
             WINDOW_HEIGHT
         )
 
+        self.set_window_opacity(self.settings.get_opacity())
+
 
     # ------------------------------------------------------
     # UI
@@ -107,7 +134,7 @@ class SearchBar(QWidget):
 
 
         # Container widget
-        self.container = QWidget(self)
+        self.container = QFrame(self)
 
         self.container.setObjectName(
             "SearchContainer"
@@ -142,14 +169,17 @@ class SearchBar(QWidget):
         # Input box
         self.input = QLineEdit()
 
-        self.input.setPlaceholderText(
-            "Google 검색"
-        )
-
+        self.change_placeholder()
 
         self.input.returnPressed.connect(
             self.search
         )
+
+        self.settings.searchEngineChanged.connect(
+            self.change_placeholder
+        )
+
+        self.input.installEventFilter(self)
 
 
         # Layout
@@ -205,23 +235,150 @@ class SearchBar(QWidget):
         )
 
 
-        self.input.setCompleter(
-            self.completer
-        )
+        # self.input.setCompleter(
+        #     self.completer
+        # )
 
 
         self.update_history()
+
+        self.settings.historyChanged.connect(
+            self.update_history
+        )
 
 
 
     def update_history(self):
 
-        history = self.history.get_history()
+        history = self.search_service.history_list()
 
 
         self.history_model.setStringList(
             history
         )
+
+
+
+    def init_completion(self):
+
+        self.popup = SuggestionPopup()
+
+        self.popup.set_callback(
+            self.select_completion
+        )
+
+        self.input.textEdited.connect(
+            self.update_completion
+        )
+
+
+
+    def select_completion(self, text):
+
+        self.input.setText(text)
+
+        self.input.setCursorPosition(
+            len(text)
+        )
+
+        self.popup.hide()
+
+        self.input.setFocus()
+
+
+
+    def update_completion(self, text):
+
+        self.current_keyword = text
+
+        if not text:
+
+            self.popup.hide()
+
+            return
+
+        self.popup.move(
+            self.x(),
+            self.y() + self.height()
+        )
+
+        self.popup.resize(
+            self.width(),
+            360
+        )
+
+        self.debounce_timer.start()
+
+        self.input.setFocus()
+
+
+
+    def init_suggestion_worker(self):
+
+        self.thread = QThread()
+
+        self.worker = SuggestionWorker(
+            self.autocomplete
+        )
+
+        self.worker.moveToThread(
+            self.thread
+        )
+
+        self.thread.start()
+
+        self.requestSuggestions.connect(
+            self.worker.request
+        )
+
+        self.worker.suggestionsReady.connect(
+            self.onSuggestionsReady
+        )
+
+        self.worker.errorOccurred.connect(
+            lambda msg: self.logger.error(msg)
+        )
+
+        self.debounce_timer = QTimer(self)
+
+        self.debounce_timer.setSingleShot(True)
+
+        self.debounce_timer.setInterval(300)
+
+        self.debounce_timer.timeout.connect(
+            self.send_suggestion_request
+        )
+
+
+
+    def send_suggestion_request(self):
+
+        keyword = self.current_keyword.strip()
+
+        if not keyword:
+
+            return
+
+        self.request_id += 1
+
+        self.requestSuggestions.emit(
+            self.request_id,
+            keyword
+        )
+
+
+
+    def onSuggestionsReady(
+        self,
+        request_id,
+        items
+    ):
+
+        if request_id != self.request_id:
+
+            return
+
+        self.popup.update_items(items)
 
 
 
@@ -254,7 +411,19 @@ class SearchBar(QWidget):
 
 
         self.container.setGraphicsEffect(
-            shadow
+            None
+        )
+
+
+
+    # ------------------------------------------------------
+    # Placeholder
+    # ------------------------------------------------------
+
+    def change_placeholder(self):
+
+        self.input.setPlaceholderText(
+            self.settings.get_search_engine() + " 검색"
         )
 
 
@@ -268,20 +437,12 @@ class SearchBar(QWidget):
         Execute Google search.
         """
 
-        keyword = self.input.text().strip()
+        keyword = self.input.text()
 
-        if not keyword:
+        if not self.search_service.search(keyword):
             return
 
-        # save history
-        self.history.add(keyword)
-
         self.update_history()
-
-        # Open Chrome
-        open_chrome_search(
-            keyword
-        )
 
         self.input.clear()
 
@@ -342,6 +503,19 @@ class SearchBar(QWidget):
 
 
 
+    # ------------------------------------------------------
+    # Opacity
+    # ------------------------------------------------------
+
+    def set_window_opacity(
+        self,
+        opacity: float,
+    ):
+        
+        self.setWindowOpacity(opacity)
+
+
+
     # =====================================================
     # Save position
     # =====================================================
@@ -358,6 +532,10 @@ class SearchBar(QWidget):
     def closeEvent(self, event):
 
         self.save_position()
+
+        self.thread.quit()
+
+        self.thread.wait()
 
         event.accept()
 
@@ -408,3 +586,96 @@ class SearchBar(QWidget):
         self.drag_position = None
 
         self.save_position()
+
+
+
+    def keyPressEvent(self, event):
+
+        if self.popup.isVisible():
+
+            if event.key() == Qt.Key_Down:
+
+                self.popup.move_selection(
+                    1
+                )
+
+                return
+            
+            if event.key() == Qt.Key_Up:
+
+                self.popup.move_selection(
+                    -1
+                )
+
+                return
+            
+            if event.key() == Qt.Key_Return:
+
+                text = self.popup.selected_text()
+
+                if text:
+
+                    self.select_completion(
+                        text
+                    )
+
+                return
+            
+            if event.key() == Qt.Key_Escape:
+
+                self.popup.hide()
+
+                return
+            
+        super().keyPressEvent(event)
+
+
+
+    def eventFilter(self, obj, event):
+
+        if obj == self.input:
+
+            if event.type() == event.KeyPress:
+
+                key = event.key()
+
+                if self.popup.isVisible():
+
+                    if key == Qt.Key_Down:
+
+                        self.popup.move_selection(
+                            1
+                        )
+
+                        return True
+                    
+                    if key == Qt.Key_Up:
+
+                        self.popup.move_selection(
+                            -1
+                        )
+
+                        return True
+                    
+                    if key == Qt.Key_Return:
+
+                        text = self.popup.selected_text()
+
+                        if text:
+
+                            self.select_completion(
+                                text
+                            )
+
+                        return True
+                    
+                    if key == Qt.Key_Escape:
+
+                        self.popup.hide()
+
+                        return True
+                    
+        return super().eventFilter(
+            obj,
+            event
+        )

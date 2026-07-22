@@ -5,20 +5,29 @@ User preference manager
 Chrome Search Bar
 """
 
-from PyQt5.QtCore import QSettings
+from PyQt5.QtCore import QSettings, QObject, pyqtSignal
 
 from config.constants import (
     APP_NAME,
 )
 
 
-class SettingsManager:
+class SettingsManager(QObject):
     """
     Manage application settings.
     """
 
 
+    hotkeyChanged = pyqtSignal(str)
+    searchEngineChanged = pyqtSignal(str)
+    opacityChanged = pyqtSignal(float)
+    startupChanged = pyqtSignal(bool)
+    historyChanged = pyqtSignal(bool)
+
+
     def __init__(self):
+
+        super().__init__()
 
         self.settings = QSettings(
             APP_NAME,
@@ -37,19 +46,32 @@ class SettingsManager:
 
         return self.settings.value(
             "hotkey",
-            "ctrl+space"
+            "Ctrl+Alt+Shift+Space"
         )
 
 
-    def set_hotkey(self, hotkey):
+    def set_hotkey(
+        self,
+        hotkey: str,
+    ):
         """
         Save global hotkey.
         """
+
+        hotkey = hotkey.strip()
+
+        current = self.get_hotkey()
+
+        if current == hotkey:
+
+            return
 
         self.settings.setValue(
             "hotkey",
             hotkey
         )
+
+        self.hotkeyChanged.emit(hotkey)
 
 
     # ==================================================
@@ -128,16 +150,20 @@ class SettingsManager:
 
     def set_opacity(
         self,
-        opacity
+        opacity: float,
     ):
         """
         Save window opacity.
         """
 
+        opacity = max(0.3, min(1.0, opacity))
+
         self.settings.setValue(
             "window/opacity",
             opacity
         )
+
+        self.opacityChanged.emit(opacity)
 
 
 
@@ -168,16 +194,24 @@ class SettingsManager:
 
     def set_startup_enabled(
         self,
-        enabled
+        enabled: bool,
     ):
         """
         Save startup option.
         """
 
+        current = self.get_startup_enabled()
+
+        if current == enabled:
+
+            return
+
         self.settings.setValue(
             "startup/enabled",
             enabled
         )
+
+        self.startupChanged.emit(enabled)
 
 
 
@@ -192,23 +226,31 @@ class SettingsManager:
 
         return self.settings.value(
             "search/engine",
-            "Google"
+            "google"
         )
 
 
 
     def set_search_engine(
         self,
-        engine
+        engine: str,
     ):
         """
         Save search engine.
         """
 
+        current = self.get_search_engine()
+
+        if current == engine:
+
+            return
+
         self.settings.setValue(
             "search/engine",
             engine
         )
+
+        self.searchEngineChanged.emit(engine)
 
 
 

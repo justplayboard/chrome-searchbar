@@ -23,6 +23,12 @@ from config.constants import (
     ICON_PATH,
 )
 
+from ui.searchbar import SearchBar
+
+from ui.settings_dialog import SettingsDialog
+
+from core.services import ServiceContainer
+
 
 class TrayManager(QObject):
     """
@@ -30,10 +36,17 @@ class TrayManager(QObject):
     """
 
 
-    def __init__(self, search_bar):
+    def __init__(
+        self,
+        search_bar: SearchBar,
+        services: ServiceContainer,
+    ):
         super().__init__()
 
         self.search_bar = search_bar
+        self.services = services
+        self.settings = services.settings
+        self.startup = services.startup
 
         self.tray = None
 
@@ -100,6 +113,32 @@ class TrayManager(QObject):
         )
 
 
+        self.startup_action = QAction(
+            "Windows 시작 시 실행",
+            self.tray
+        )
+
+        self.startup_action.setCheckable(True)
+
+        self.startup_action.setChecked(
+            self.startup.is_enabled()
+        )
+
+        self.startup_action.triggered.connect(
+            self.toggle_startup
+        )
+
+
+        self.settings_action = QAction(
+            "설정",
+            self
+        )
+
+        self.settings_action.triggered.connect(
+            self.show_settings
+        )
+
+
         quit_action = QAction(
             "종료",
             self
@@ -116,6 +155,14 @@ class TrayManager(QObject):
 
         menu.addAction(
             hide_action
+        )
+
+        menu.addAction(
+            self.startup_action
+        )
+
+        menu.addAction(
+            self.settings_action
         )
 
         menu.addSeparator()
@@ -145,6 +192,14 @@ class TrayManager(QObject):
 
 
 
+    def show_settings(self):
+
+        dialog = SettingsDialog(self.services, self.search_bar)
+
+        dialog.exec()
+
+
+
     def show_search_bar(self):
         """
         Show search window.
@@ -167,6 +222,22 @@ class TrayManager(QObject):
 
 
 
+    def toggle_startup(self):
+
+        enabled = self.startup_action.isChecked()
+
+        self.settings.set_startup_enabled(enabled)
+
+        if enabled:
+
+            self.startup.enable()
+
+        else:
+
+            self.startup.disable()
+
+
+
     def tray_clicked(self, reason):
         """
         Handle tray icon click.
@@ -183,6 +254,10 @@ class TrayManager(QObject):
         Quit application completely.
         """
 
-        self.tray.hide()
+        app = QApplication.instance()
 
-        QApplication.quit()
+        if app is not None:
+
+            self.tray.hide()
+
+            app.quit()

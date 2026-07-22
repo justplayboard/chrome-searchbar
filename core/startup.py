@@ -11,6 +11,8 @@ import winreg
 
 from config.constants import APP_NAME
 
+from core.settings import SettingsManager
+
 
 # Registry location
 STARTUP_KEY = (
@@ -24,8 +26,20 @@ class StartupManager:
     """
 
 
-    def __init__(self):
+    def __init__(
+        self,
+        settings: SettingsManager,
+        logger,
+    ):
+        
         self.app_name = APP_NAME
+
+        self.settings = settings
+        self.logger = logger
+
+        self.settings.startupChanged.connect(
+            self.update_startup
+        )
 
 
 
@@ -79,6 +93,10 @@ class StartupManager:
                 path
             )
 
+        self.logger.info(
+            "Startup enabled"
+        )
+
 
 
     def disable(self):
@@ -104,6 +122,10 @@ class StartupManager:
         except FileNotFoundError:
 
             pass
+
+        self.logger.info(
+            "Startup disabled"
+        )
 
 
 
@@ -134,3 +156,18 @@ class StartupManager:
         except FileNotFoundError:
 
             return False
+        
+
+
+    def update_startup(
+        self,
+        enabled: bool,
+    ):
+        
+        if enabled:
+
+            self.enable()
+
+        else:
+
+            self.disable()

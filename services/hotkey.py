@@ -5,10 +5,114 @@ Global hotkey manager
 Chrome Search Bar
 """
 
-import keyboard
+from __future__ import annotations
 
-from PyQt5.QtCore import QObject, pyqtSignal
+import string
 
+import ctypes
+from ctypes import wintypes
+
+from PyQt5.QtCore import QObject, QAbstractNativeEventFilter
+
+from PyQt5.QtWidgets import QApplication
+
+from ui.searchbar import SearchBar
+
+from core.services import ServiceContainer
+
+
+
+# --------------------------------------------------
+# Windows API
+# --------------------------------------------------
+
+user32 = ctypes.windll.user32
+
+WM_HOTKEY = 0x0312
+
+MOD_ALT = 0x0001
+MOD_CONTROL = 0x0002
+MOD_SHIFT = 0x0004
+MOD_WIN = 0x0008
+
+VK_SPACE = 0x20
+
+HOTKEY_ID = 1
+
+MODIFIERS = {
+    "CTRL": MOD_CONTROL,
+    "CONTROL": MOD_CONTROL,
+    "ALT": MOD_ALT,
+    "SHIFT": MOD_SHIFT,
+    "WIN": MOD_WIN,
+}
+
+VK_CODES = {
+    "SPACE": 0x20,
+    "TAB": 0x09,
+    "ENTER": 0x0D,
+    "ESC": 0x1B,
+    "ESCAPE": 0x1B,
+
+    "UP": 0x26,
+    "DOWN": 0x28,
+    "LEFT": 0x25,
+    "RIGHT": 0x27,
+
+    "HOME": 0x24,
+    "END": 0x23,
+
+    "PAGEUP": 0x21,
+    "PAGEDOWN": 0x22,
+
+    "INSERT": 0x2D,
+    "DELETE": 0x2E,
+}
+
+
+# --------------------------------------------------
+# Native Event Filter
+# --------------------------------------------------
+
+class HotkeyEventFilter(
+    QAbstractNativeEventFilter
+):
+    """
+    Receives WM_HOTKEY messages.
+    """
+
+    def __init__(self, callback):
+
+        super().__init__()
+
+        self.callback = callback
+
+    def nativeEventFilter(
+        self,
+        eventType,
+        message,
+    ):
+
+        if eventType != b"windows_generic_MSG":
+
+            return False, 0
+
+        msg = wintypes.MSG.from_address(
+            int(message)
+        )
+
+        if msg.message == WM_HOTKEY:
+
+            self.callback()
+
+            return True, 0
+
+        return False, 0
+
+
+# --------------------------------------------------
+# Manager
+# --------------------------------------------------
 
 class HotkeyManager(QObject):
     """
@@ -16,85 +120,111 @@ class HotkeyManager(QObject):
     """
 
 
-    # Main Thread로 전달할 신호
-    toggle_signal = pyqtSignal()
-
     def __init__(
         self,
-        search_bar,
-        hotkey="ctrl+space"
+        search_bar: SearchBar,
+        services: ServiceContainer,
+        logger,
     ):
         super().__init__()
 
+        self._init_keys()
+
         self.search_bar = search_bar
+        self.settings = services.settings
+        self.logger = logger
 
-        self.hotkey = hotkey
-
-        # Signal 연결
-        self.toggle_signal.connect(
-            self.toggle_search_bar
+        self.settings.hotkeyChanged.connect(
+            self.reload_hotkey
         )
 
-        self.register()
+        self.filter = HotkeyEventFilter(
+            self.on_hotkey
+        )
+
+        QApplication.instance().installNativeEventFilter(
+            self.filter
+        )
+
+        self.register(self.settings.get_hotkey())
 
 
 
-    def register(self):
+    def _init_keys(self):
+
+        for c in string.ascii_uppercase:
+
+            VK_CODES[c] = ord(c)
+
+        for i in range(10):
+
+            VK_CODES[str(i)] = ord(str(i))
+
+        for i in range(1, 25):
+
+            VK_CODES[f"F{i}"] = 0x70 + i - 1
+
+
+
+    def parse_hotkey(self, hotkey: str):
+
+        modifier = 0
+        vk = None
+
+        for part in hotkey.upper().split("+"):
+
+            part = part.strip()
+
+            if part in MODIFIERS:
+
+                modifier |= MODIFIERS[part]
+
+            elif part in VK_CODES:
+
+                vk = VK_CODES[part]
+
+            else:
+
+                raise ValueError(
+                    f"Unknown hotkey: {part}"
+                )
+
+        if vk is None:
+
+            raise ValueError(
+                "No virtual key found."
+            )
+
+        return modifier, vk
+
+
+
+    def register(self, hotkey):
         """
         Register global hotkey.
         """
 
-        keyboard.add_hotkey(
-            self.hotkey,
-            self.emit_toggle
+        modifier, vk = self.parse_hotkey(hotkey)
+
+        ok = user32.RegisterHotKey(
+            None,
+            HOTKEY_ID,
+            modifier,
+            vk,
         )
 
+        if not ok:
 
-    def emit_toggle(self):
-        """
-        Keyboard thread에서 실행됨.
-        Signal만 발생시킨다.
-        """
+            error = ctypes.get_last_error()
 
-        self.toggle_signal.emit()
+            raise RuntimeError(
+                f"RegisterHotKey failed ({error})"
+            )
 
-
-    def toggle_search_bar(self):
-        """
-        Show or hide search bar.
-        """
-
-        if self.search_bar.isVisible():
-
-            self.hide_search_bar()
-
-        else:
-
-            self.show_search_bar()
-
-
-
-    def show_search_bar(self):
-        """
-        Show search window.
-        """
-
-        self.search_bar.show()
-
-        self.search_bar.activateWindow()
-
-        self.search_bar.raise_()
-
-        self.search_bar.input.setFocus()
-
-
-
-    def hide_search_bar(self):
-        """
-        Hide search window.
-        """
-
-        self.search_bar.hide()
+        self.logger.info(
+            "Global hotkey registered: %s",
+            hotkey
+        )
 
 
 
@@ -103,4 +233,59 @@ class HotkeyManager(QObject):
         Remove registered hotkeys.
         """
 
-        keyboard.unhook_all()
+        user32.UnregisterHotKey(
+            None,
+            HOTKEY_ID,
+        )
+
+        self.logger.info(
+            "Global hotkey removed"
+        )
+
+
+
+    def shutdown(self):
+
+        user32.UnregisterHotKey(
+            None,
+            HOTKEY_ID,
+        )
+
+        QApplication.instance().removeNativeEventFilter(
+            self.filter
+        )
+
+
+
+    def reload_hotkey(
+        self,
+        hotkey: str,
+    ):
+        
+        try:
+        
+            self.unregister()
+
+        except Exception:
+
+            pass
+
+        self.register(hotkey)
+
+
+
+    def on_hotkey(self):
+
+        if self.search_bar.isVisible():
+
+            self.search_bar.hide()
+
+        else:
+
+            self.search_bar.show()
+
+            self.search_bar.raise_()
+
+            self.search_bar.activateWindow()
+
+            self.search_bar.input.setFocus()

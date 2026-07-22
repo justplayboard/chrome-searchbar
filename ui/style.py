@@ -18,7 +18,7 @@ from config.constants import (
 
 SEARCH_BAR_STYLE = f"""
 /* Main window */
-QWidget {{
+#SearchBar {{
     background-color: transparent;
     font-family: "{FONT_FAMILY}";
     font-size: {FONT_SIZE}px;
@@ -64,6 +64,35 @@ QLineEdit::placeholder {{
 #SearchContainer:focus-within {{
     border: 2px solid {FOCUS_BORDER_COLOR};
 }}
+"""
+
+
+SUGGESTION_STYLE = """
+
+QListWidget {
+
+    background-color: white;
+
+    border-radius: 10px;
+
+    border: 1px solid #dddddd;
+
+}
+
+
+QListWidget::item:selected {
+
+    background-color: #e8f0fe;
+
+}
+
+
+QLabel {
+
+    background: transparent;
+
+}
+
 """
 
 

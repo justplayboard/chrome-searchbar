@@ -9,33 +9,27 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from ui.searchbar import SearchBar
-from ui.tray import TrayManager
-from services.hotkey import HotkeyManager
+from app import ApplicationController
 
 
 def main():
     """Application entry point."""
 
-    app = QApplication(sys.argv)
+    qt_app = QApplication(sys.argv)
 
     # 프로그램 이름
-    app.setApplicationName("Chrome Search Bar")
-    app.setApplicationDisplayName("Chrome Search Bar")
+    qt_app.setApplicationName("Chrome Search Bar")
+    qt_app.setApplicationDisplayName("Chrome Search Bar")
 
-    # 메인 검색창 생성
-    search_bar = SearchBar()
+    controller = ApplicationController(qt_app)
 
-    tray = TrayManager(
-        search_bar
-    )
-    tray.show()
+    controller.start()
 
-    hotkey = HotkeyManager(
-        search_bar
-    )
+    exit_code = qt_app.exec()
 
-    sys.exit(app.exec())
+    controller.shutdown()
+
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

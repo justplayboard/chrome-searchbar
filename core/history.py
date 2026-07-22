@@ -19,7 +19,10 @@ class HistoryManager:
     MAX_HISTORY_COUNT = 50
 
 
-    def __init__(self):
+    def __init__(
+        self,
+        logger,
+    ):
 
         self.settings = QSettings(
             APP_NAME,
@@ -27,6 +30,8 @@ class HistoryManager:
         )
 
         self.key = "search/history"
+
+        self.logger = logger
 
 
 
@@ -106,6 +111,11 @@ class HistoryManager:
             history
         )
 
+        self.logger.info(
+            "History added: %s",
+            keyword
+        )
+
 
 
     def remove(self, keyword):
@@ -128,6 +138,11 @@ class HistoryManager:
             history
         )
 
+        self.logger.info(
+            "History removed: %s",
+            keyword
+        )
+
 
 
     def clear(self):
@@ -137,6 +152,10 @@ class HistoryManager:
 
         self.settings.remove(
             self.key
+        )
+
+        self.logger.info(
+            "History cleared"
         )
 
 
