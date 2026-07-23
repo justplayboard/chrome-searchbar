@@ -43,6 +43,8 @@ from ui.style import apply_search_style
 
 from ui.suggestion_popup import SuggestionPopup
 
+from ui.search_line_edit import SearchLineEdit
+
 from core.services import ServiceContainer
 
 from search.suggestion_worker import SuggestionWorker
@@ -70,7 +72,6 @@ class SearchBar(QWidget):
 
         self.drag_position = None
         self.request_id = 0
-        self.current_keyword = ""
 
         self.settings = services.settings
         self.search_service = services.search_service
@@ -167,7 +168,7 @@ class SearchBar(QWidget):
 
 
         # Input box
-        self.input = QLineEdit()
+        self.input = SearchLineEdit()
 
         self.change_placeholder()
 
@@ -267,8 +268,16 @@ class SearchBar(QWidget):
             self.select_completion
         )
 
-        self.input.textEdited.connect(
+        self.input.searchTextEdited.connect(
             self.update_completion
+        )
+
+        self.input.compositionStarted.connect(
+            self.on_composition_started
+        )
+
+        self.input.compositionFinished.connect(
+            self.on_composition_finished
         )
 
 
@@ -289,7 +298,9 @@ class SearchBar(QWidget):
 
     def update_completion(self, text):
 
-        self.current_keyword = text
+        if self.input.is_composing:
+
+            return
 
         if not text:
 
@@ -310,6 +321,20 @@ class SearchBar(QWidget):
         self.debounce_timer.start()
 
         self.input.setFocus()
+
+
+
+    def on_composition_started(self):
+
+        self.popup.hide()
+
+        self.debounce_timer.stop()
+
+
+
+    def on_composition_finished(self):
+
+        self.debounce_timer.start()
 
 
 
@@ -353,7 +378,7 @@ class SearchBar(QWidget):
 
     def send_suggestion_request(self):
 
-        keyword = self.current_keyword.strip()
+        keyword = self.input.text().strip()
 
         if not keyword:
 
@@ -589,45 +614,45 @@ class SearchBar(QWidget):
 
 
 
-    def keyPressEvent(self, event):
+    # def keyPressEvent(self, event):
 
-        if self.popup.isVisible():
+    #     if self.popup.isVisible():
 
-            if event.key() == Qt.Key_Down:
+    #         if event.key() == Qt.Key_Down:
 
-                self.popup.move_selection(
-                    1
-                )
+    #             self.popup.move_selection(
+    #                 1
+    #             )
 
-                return
+    #             return
             
-            if event.key() == Qt.Key_Up:
+    #         if event.key() == Qt.Key_Up:
 
-                self.popup.move_selection(
-                    -1
-                )
+    #             self.popup.move_selection(
+    #                 -1
+    #             )
 
-                return
+    #             return
             
-            if event.key() == Qt.Key_Return:
+    #         if event.key() == Qt.Key_Return:
 
-                text = self.popup.selected_text()
+    #             text = self.popup.selected_text()
 
-                if text:
+    #             if text:
 
-                    self.select_completion(
-                        text
-                    )
+    #                 self.select_completion(
+    #                     text
+    #                 )
 
-                return
+    #             return
             
-            if event.key() == Qt.Key_Escape:
+    #         if event.key() == Qt.Key_Escape:
 
-                self.popup.hide()
+    #             self.popup.hide()
 
-                return
+    #             return
             
-        super().keyPressEvent(event)
+    #     super().keyPressEvent(event)
 
 
 
