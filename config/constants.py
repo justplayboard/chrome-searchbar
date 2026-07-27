@@ -7,6 +7,7 @@ Chrome Search Bar
 
 from pathlib import Path
 import os
+import sys
 
 
 # ==========================================================
@@ -85,6 +86,18 @@ SEARCH_ICON = "🔍"
 
 
 # ==========================================================
+# Browser
+# ==========================================================
+
+BROWSER_LIST = [
+
+    "chrome",
+
+    "brave",
+]
+
+
+# ==========================================================
 # Chrome
 # ==========================================================
 
@@ -105,8 +118,22 @@ DEFAULT_CHROME_PATHS = [
 # Resource Directory
 # ==========================================================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parents[1]
 
 RESOURCE_DIR = BASE_DIR / "resources"
 
 ICON_PATH = RESOURCE_DIR / "icon.ico"
+
+ICON_CHROME_PATH = RESOURCE_DIR / "icon-chrome.ico"
+
+ICON_BRAVE_PATH = RESOURCE_DIR / "icon-brave.ico"
+
+
+# ==========================================================
+# Resource Path
+# ==========================================================
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)

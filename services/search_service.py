@@ -32,7 +32,12 @@ class SearchService:
         self.settings = settings
         self.logger = logger
 
+        self.current_browser = self.settings.get_browser()
         self.current_engine = self.settings.get_search_engine()
+
+        self.settings.browserChanged.connect(
+            self.change_browser
+        )
 
         self.settings.searchEngineChanged.connect(
             self.change_engine
@@ -89,7 +94,10 @@ class SearchService:
 
             url = engine.build_url(keyword)
 
-            open_url(url)
+            open_url(
+                self.current_browser,
+                url
+            )
 
             self.logger.info(
                 "Chrome launched successfully: %s",
@@ -115,6 +123,14 @@ class SearchService:
     def clear_history(self):
 
         self.history.clear()
+
+
+    def change_browser(
+        self,
+        browser: str,
+    ):
+
+        self.current_browser = browser
 
 
     def change_engine(

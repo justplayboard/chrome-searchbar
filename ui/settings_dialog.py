@@ -22,6 +22,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from config.constants import BROWSER_LIST
+
 from ui.hotkey_edit import HotkeyEdit
 
 
@@ -52,6 +54,20 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(self)
 
         form = QFormLayout()
+
+        #
+        # Browser
+        #
+        self.browser_combo = QComboBox()
+
+        self.browser_combo.addItems(
+            BROWSER_LIST
+        )
+
+        form.addRow(
+            "Browser",
+            self.browser_combo,
+        )
 
         #
         # Search Engine
@@ -169,6 +185,10 @@ class SettingsDialog(QDialog):
 
         settings = self.services.settings
 
+        self.browser_combo.setCurrentText(
+            settings.get_browser()
+        )
+
         self.engine_combo.setCurrentText(
             settings.get_search_engine()
         )
@@ -215,6 +235,10 @@ class SettingsDialog(QDialog):
     def accept(self):
 
         settings = self.services.settings
+
+        settings.set_browser(
+            self.browser_combo.currentText()
+        )
 
         settings.set_search_engine(
             self.engine_combo.currentText()

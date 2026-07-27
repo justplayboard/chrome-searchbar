@@ -21,6 +21,7 @@ from PyQt5.QtCore import QObject
 from config.constants import (
     APP_NAME,
     ICON_PATH,
+    ICON_CHROME_PATH,
 )
 
 from ui.searchbar import SearchBar
@@ -64,10 +65,10 @@ class TrayManager(QObject):
 
 
         # Icon
-        if ICON_PATH.exists():
+        if ICON_CHROME_PATH.exists():
 
             self.tray.setIcon(
-                QIcon(str(ICON_PATH))
+                QIcon(str(ICON_CHROME_PATH))
             )
 
         else:
@@ -157,9 +158,9 @@ class TrayManager(QObject):
             hide_action
         )
 
-        menu.addAction(
-            self.startup_action
-        )
+        # menu.addAction(
+        #     self.startup_action
+        # )
 
         menu.addAction(
             self.settings_action
@@ -194,9 +195,27 @@ class TrayManager(QObject):
 
     def show_settings(self):
 
+        if self.search_bar._settings_open:
+
+            return
+
+        self.search_bar._settings_open = True
+
         dialog = SettingsDialog(self.services, self.search_bar)
 
+        dialog.finished.connect(
+            self.close_settings
+        )
+
+        self.search_bar.show()
+
         dialog.exec()
+
+
+
+    def close_settings(self):
+
+        self.search_bar._settings_open = False
 
 
 
@@ -218,6 +237,11 @@ class TrayManager(QObject):
         Hide search window.
         """
 
+        if self.search_bar._settings_open:
+
+            return
+
+        self.search_bar.popup.hide()
         self.search_bar.hide()
 
 

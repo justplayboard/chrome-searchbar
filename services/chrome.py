@@ -7,24 +7,30 @@ Chrome launcher and Google search handler
 import subprocess
 
 
-def open_url(url: str):
+def open_url(
+    browser: str,
+    url: str,
+):
 
     command = [
         "cmd",
         "/c",
         "start",
-        "chrome",
+        browser,
         url,
     ]
 
     try:
 
-        subprocess.Popen(command)
+        subprocess.Popen(
+            command,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
 
     except Exception as exc:
 
         raise RuntimeError(
-            "Failed to launch Chrome"
+            f"Failed to launch {browser}"
         ) from exc
     
     return

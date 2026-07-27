@@ -19,6 +19,7 @@ class SettingsManager(QObject):
 
 
     hotkeyChanged = pyqtSignal(str)
+    browserChanged = pyqtSignal(str)
     searchEngineChanged = pyqtSignal(str)
     opacityChanged = pyqtSignal(float)
     startupChanged = pyqtSignal(bool)
@@ -251,6 +252,39 @@ class SettingsManager(QObject):
         )
 
         self.searchEngineChanged.emit(engine)
+
+
+
+    # ==================================================
+    # Browser
+    # ==================================================
+
+    def get_browser(self):
+
+        return self.settings.value(
+            "search/browser",
+            "chrome"
+        )
+
+
+
+    def set_browser(
+        self,
+        browser: str,
+    ):
+
+        current = self.get_browser()
+
+        if current == browser:
+
+            return
+
+        self.settings.setValue(
+            "search/browser",
+            browser
+        )
+
+        self.browserChanged.emit(browser)
 
 
 

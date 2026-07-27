@@ -12,10 +12,12 @@ from PyQt5.QtCore import (
     QThread,
     pyqtSignal,
     QTimer,
+    QSize,
 )
 from PyQt5.QtGui import (
     QFont,
     QCursor,
+    QIcon,
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -37,6 +39,8 @@ from config.constants import (
     SHADOW_OFFSET_Y,
     SHADOW_ALPHA,
     SEARCH_ICON,
+    ICON_CHROME_PATH,
+    ICON_BRAVE_PATH,
 )
 
 from ui.style import apply_search_style
@@ -72,6 +76,7 @@ class SearchBar(QWidget):
 
         self.drag_position = None
         self.request_id = 0
+        self._settings_open = False
 
         self.settings = services.settings
         self.search_service = services.search_service
@@ -105,8 +110,8 @@ class SearchBar(QWidget):
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             |
-            Qt.WindowType.WindowStaysOnTopHint
-            |
+            # Qt.WindowType.WindowStaysOnTopHint
+            # |
             Qt.WindowType.Tool
         )
 
@@ -157,10 +162,11 @@ class SearchBar(QWidget):
             "SearchIcon"
         )
 
-        self.icon.setText(
-            SEARCH_ICON
-        )
+        self.change_icon()
 
+        self.settings.browserChanged.connect(
+            self.change_icon
+        )
 
         self.icon.setAlignment(
             Qt.AlignmentFlag.AlignCenter
@@ -442,6 +448,42 @@ class SearchBar(QWidget):
 
 
     # ------------------------------------------------------
+    # Icon
+    # ------------------------------------------------------
+
+    def change_icon(self):
+
+        browser = self.settings.get_browser()
+
+        ico = SEARCH_ICON
+
+        if browser == "chrome":
+
+            ico = ICON_CHROME_PATH
+
+        elif browser == "brave":
+
+            ico = ICON_BRAVE_PATH
+
+        if ico == SEARCH_ICON:
+
+            self.icon.setText(
+                ico
+            )
+
+        else:
+
+            ico = str(ico)
+
+            icon = QIcon(ico)
+
+            pixmap = icon.pixmap(QSize(32, 32))
+
+            self.icon.setPixmap(pixmap)
+
+
+
+    # ------------------------------------------------------
     # Placeholder
     # ------------------------------------------------------
 
@@ -472,6 +514,7 @@ class SearchBar(QWidget):
         self.input.clear()
 
         # Hide after search
+        self.popup.hide()
         self.hide()
 
 
@@ -600,6 +643,14 @@ class SearchBar(QWidget):
                 -
                 self.drag_position
             )
+
+            if self.popup.isVisible():
+
+                pos = self.mapToGlobal(
+                    QPoint(0, self.height())
+                )
+
+                self.popup.move(pos)
 
 
             event.accept()

@@ -7,6 +7,7 @@ Application logging manager.
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
 
@@ -26,7 +27,12 @@ class LoggingManager:
 
         self._logger.setLevel(logging.INFO)
 
-        log_dir = Path("logs")
+        if getattr(sys, "frozen", False):
+            log_dir = Path(sys.executable).parent / "logs"
+
+        else:
+            log_dir = Path("logs")
+
         log_dir.mkdir(exist_ok=True)
 
         formatter = logging.Formatter(
