@@ -97,6 +97,10 @@ class SearchBar(QWidget):
 
         apply_search_style(self)
 
+        self.show()
+        self.activateWindow()
+        self.input.setFocus()
+
 
     # ------------------------------------------------------
     # Window configuration
