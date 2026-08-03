@@ -97,10 +97,7 @@ class SearchBar(QWidget):
 
         apply_search_style(self)
 
-        self.show()
-        self.raise_()
-        self.activateWindow()
-        self.input.setFocus()
+        self.show_search_bar()
 
 
     # ------------------------------------------------------
@@ -573,6 +570,22 @@ class SearchBar(QWidget):
             x,
             y
         )
+
+
+
+    # ------------------------------------------------------
+    # Show & Hide
+    # ------------------------------------------------------
+
+    def show_search_bar(self):
+
+        self.show()
+
+        self.raise_()
+
+        self.activateWindow()
+
+        self.input.setFocus()
 
 
 

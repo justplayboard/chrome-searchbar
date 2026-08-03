@@ -100,7 +100,7 @@ class TrayManager(QObject):
         )
 
         show_action.triggered.connect(
-            self.show_search_bar
+            self.search_bar.show_search_bar
         )
 
 
@@ -271,7 +271,7 @@ class TrayManager(QObject):
 
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
 
-            self.show_search_bar()
+            self.search_bar.show_search_bar()
 
 
 
