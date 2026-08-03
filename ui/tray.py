@@ -226,6 +226,8 @@ class TrayManager(QObject):
 
         self.search_bar.show()
 
+        self.search_bar.raise_()
+
         self.search_bar.activateWindow()
 
         self.search_bar.input.setFocus()
