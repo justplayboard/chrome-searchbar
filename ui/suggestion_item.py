@@ -24,6 +24,8 @@ EMOJI_MAP = {
 
     "youtube": "▶️",
 
+    "naver": "🗨️",
+
 }
 
 

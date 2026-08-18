@@ -9,7 +9,7 @@ from __future__ import annotations
 from search.google import GoogleEngine
 from search.github import GitHubEngine
 from search.youtube import YouTubeEngine
-# from search.naver import NaverEngine
+from search.naver import NaverEngine
 # from search.chatgpt import ChatGPTEngine
 # from search.perplexity import PerplexityEngine
 
@@ -23,7 +23,7 @@ class SearchEngineRegistry:
         self.register(GoogleEngine())
         self.register(GitHubEngine())
         self.register(YouTubeEngine())
-        # self.register(NaverEngine())
+        self.register(NaverEngine())
         # self.register(ChatGPTEngine())
         # self.register(PerplexityEngine())
 

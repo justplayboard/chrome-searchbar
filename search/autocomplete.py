@@ -7,6 +7,7 @@ from search.providers.history import HistoryProvider
 from search.providers.google import GoogleProvider
 from search.providers.github import GitHubProvider
 from search.providers.youtube import YouTubeProvider
+from search.providers.naver import NaverProvider
 
 
 class AutoCompleteManager:
@@ -25,6 +26,8 @@ class AutoCompleteManager:
             "github": GitHubProvider(),
 
             "youtube": YouTubeProvider(),
+
+            "naver": NaverProvider(),
         }
 
     def complete(self, text):
