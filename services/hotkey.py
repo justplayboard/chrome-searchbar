@@ -276,11 +276,9 @@ class HotkeyManager(QObject):
 
     def on_hotkey(self):
 
-        if self.search_bar.isVisible() and not self.search_bar._settings_open:
+        if self.search_bar.isVisible():
 
-            self.search_bar.popup.hide()
-            
-            self.search_bar.hide()
+            self.search_bar.hide_search_bar()
 
         else:
 

@@ -516,8 +516,7 @@ class SearchBar(QWidget):
         self.input.clear()
 
         # Hide after search
-        self.popup.hide()
-        self.hide()
+        self.hide_search_bar()
 
 
 
@@ -578,6 +577,9 @@ class SearchBar(QWidget):
     # ------------------------------------------------------
 
     def show_search_bar(self):
+        """
+        Show search window.
+        """
 
         self.show()
 
@@ -586,6 +588,20 @@ class SearchBar(QWidget):
         self.activateWindow()
 
         self.input.setFocus()
+
+
+
+    def hide_search_bar(self):
+        """
+        Hide search window.
+        """
+
+        if self._settings_open:
+
+            return
+
+        self.popup.hide()
+        self.hide()
 
 
 

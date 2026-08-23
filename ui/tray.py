@@ -110,7 +110,7 @@ class TrayManager(QObject):
         )
 
         hide_action.triggered.connect(
-            self.hide_search_bar
+            self.search_bar.hide_search_bar
         )
 
 
@@ -157,6 +157,8 @@ class TrayManager(QObject):
         menu.addAction(
             hide_action
         )
+
+        menu.addSeparator()
 
         # menu.addAction(
         #     self.startup_action
@@ -216,35 +218,6 @@ class TrayManager(QObject):
     def close_settings(self):
 
         self.search_bar._settings_open = False
-
-
-
-    def show_search_bar(self):
-        """
-        Show search window.
-        """
-
-        self.search_bar.show()
-
-        self.search_bar.raise_()
-
-        self.search_bar.activateWindow()
-
-        self.search_bar.input.setFocus()
-
-
-
-    def hide_search_bar(self):
-        """
-        Hide search window.
-        """
-
-        if self.search_bar._settings_open:
-
-            return
-
-        self.search_bar.popup.hide()
-        self.search_bar.hide()
 
 
 
