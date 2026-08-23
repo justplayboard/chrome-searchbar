@@ -209,7 +209,7 @@ class TrayManager(QObject):
             self.close_settings
         )
 
-        self.search_bar.show()
+        self.search_bar.show_search_bar()
 
         dialog.exec()
 
